@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import exceptions.DeckException;
 import netgame.common.Hub;
@@ -51,18 +52,62 @@ public class PokerHub extends Hub {
 
 		if (message instanceof Action) {
 			
-			//TODO: If the Action = StartGame, start the game...
-			//		Create an instance of GamePlay, set all the parameters
+			Action run = (Action) message;
+			switch (run.getAction()) {
 			
-			//TODO: If Action = Sit, add the player to the table
+			case GameState:
+				sendToAll(HubPokerTable);
+				break;
 			
-			//TODO: If Action = Leave, remove the player from the table
 			
-			//TODO: If Action = Sit or Leave, send the Table
-			//		back to the client
+			case TableState:
+				resetOutput();
+				sendToAll(HubPokerTable);
+				break;
+				
+			case Sit:
+				resetOutput();
+				HubPokerTable.AddPlayerToTable(run.getPlayer()); //Adds player to the table
+				sendToAll(HubPokerTable); //Updates the table for all players
+				break;
+				
+			case Leave:
+				resetOutput();
+				HubPokerTable.RemovePlayerFromTable(run.getPlayer()); //Removes player from table
+				sendToAll(HubPokerTable); //Updates the table for all player
+				break;
+				
+			case StartGame:
+				resetOutput();
+				
+				eGame newGame = run.geteGame();
+				Rule rule = new Rule(newGame);
+				
+				//Randomly picks the starting player
+				HashMap<UUID, Player> players = new HashMap<UUID, Player>();
+				int firstplayer = (int)Math.round(Math.random());
+				Player[] player = players.values().toArray(new Player[1]);
+				Player p = player[firstplayer];
+				
+				HubGamePlay = new GamePlay(rule, p.getPlayerID());
+				
+				HashMap<Integer, Player> playerPosition = new HashMap<Integer, Player>();
+				HubGamePlay.setGamePlayers(HubPokerTable.getHashPlayers());
+				
+				//Initializes the deck
+				int Jokers = rule.GetNumberOfJokers();
+				Deck deck = new Deck(Jokers, rule.GetWildCards());
+				HubGamePlay.setGameDeck(deck);
+				
+				//Sets the order of players
+				HubGamePlay.setiActOrder(GamePlay.GetOrder(p.getiPlayerPosition()));
+
+				HubGamePlay.setPlayerNextToAct(HubGamePlay.getPlayerByPosition(p.getiPlayerPosition()));
+				sendToAll(HubGamePlay);
+				break;
+			}
 			
-			//TODO: If Action = GameState, send HubGamePlay 
-			//		back to the client
+					
 		}
 
 		System.out.println("Message Received by Hub");
